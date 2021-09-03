@@ -738,16 +738,7 @@ bool CudnnConvOp::DoRunWithType() {
         SetConvDescComputeType(conv_desc_, kComputeTypesToTry[bestAlgoIndex]);
       }
     } else {
-      // Get the convolution algorithm based on the workspace limit.
-      CUDNN_ENFORCE(cudnnGetConvolutionForwardAlgorithm(
-          cudnn_wrapper_.inline_cudnn_handle(),
-          bottom_desc_,
-          filter_desc_,
-          conv_desc_,
-          top_desc_,
-          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-          cudnn_ws_nbytes_limit_,
-          &algo_));
+      algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
     }
     CUDNN_ENFORCE(cudnnGetConvolutionForwardWorkspaceSize(
         cudnn_wrapper_.inline_cudnn_handle(),
@@ -1110,15 +1101,7 @@ bool CudnnConvGradientOp::DoRunWithType() {
       }
     } else {
       // choose backward algorithm for filter
-      CUDNN_ENFORCE(cudnnGetConvolutionBackwardFilterAlgorithm(
-          cudnn_wrapper_.inline_cudnn_handle(),
-          bottom_desc_,
-          top_desc_,
-          bwd_filter_conv_desc_,
-          filter_desc_,
-          CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-          cudnn_ws_nbytes_limit_,
-          &bwd_filter_algo_));
+      bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     }
     // Pick dX algo if needed
     if (OutputSize() == 3 || (no_bias_ && (OutputSize() == 2))) {
@@ -1197,15 +1180,7 @@ bool CudnnConvGradientOp::DoRunWithType() {
               bwd_data_conv_desc_, kComputeTypesToTry[bestAlgoIndex]);
         }
       } else {
-        CUDNN_ENFORCE(cudnnGetConvolutionBackwardDataAlgorithm(
-            cudnn_wrapper_.inline_cudnn_handle(),
-            filter_desc_,
-            top_desc_,
-            bwd_data_conv_desc_,
-            bottom_desc_,
-            CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-            cudnn_ws_nbytes_limit_,
-            &bwd_data_algo_));
+        bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       }
     }
 
