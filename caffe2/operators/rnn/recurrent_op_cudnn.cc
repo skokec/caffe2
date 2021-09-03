@@ -116,15 +116,7 @@ void RecurrentBaseOp<T>::initialize(
   // RNN setup
   {
 #if CUDNN_VERSION_MIN(8, 0, 0)	  
-    CUDNN_ENFORCE(cudnnSetRNNDescriptor_v6(
-        rnnDesc_,
-        hiddenSize,
-        numLayers,
-        dropoutDesc_,
-        rnnInput,
-        rnnDirection,
-        rnnMode,
-        cudnnTypeWrapper<T>::type));
+    throw std::exception();
 #elif CUDNN_VERSION_MIN(7, 0, 0)
     CUDNN_ENFORCE(cudnnSetRNNDescriptor(
         cudnn_wrapper_.inline_cudnn_handle(),

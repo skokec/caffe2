@@ -303,7 +303,19 @@ bool CudnnConvTransposeOp<T>::RunOnDevice() {
             return data_perf_stat[0].algo;
           });
     } else {
+#if CUDNN_VERSION_MIN(8, 0, 0)	  
       bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+#else
+      CUDNN_ENFORCE(cudnnGetConvolutionBackwardDataAlgorithm(
+          cudnn_wrapper_.inline_cudnn_handle(),
+          filter_desc_,
+          bottom_desc_,
+          conv_desc_,
+          top_desc_,
+          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+          cudnn_ws_nbytes_limit_,
+          &bwd_data_algo_));
+#endif
     }
 
     size_t bwd_data_ws_size;
@@ -559,8 +571,31 @@ bool CudnnConvTransposeGradientOp<T>::RunOnDevice() {
             return fwd_perf_stat[0].algo;
           });
     } else {
+#if CUDNN_VERSION_MIN(8, 0, 0)
       algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
       bwd_filter_algo_ = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+#else
+      // choose backward algorithm for filter
+      CUDNN_ENFORCE(cudnnGetConvolutionBackwardFilterAlgorithm(
+          cudnn_wrapper_.inline_cudnn_handle(),
+          top_desc_,
+          bottom_desc_,
+          conv_desc_,
+          filter_desc_,
+          CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
+          cudnn_ws_nbytes_limit_,
+          &bwd_filter_algo_));
+      // choose backward algo for data
+      CUDNN_ENFORCE(cudnnGetConvolutionForwardAlgorithm(
+          cudnn_wrapper_.inline_cudnn_handle(),
+          top_desc_,
+          filter_desc_,
+          conv_desc_,
+          bottom_desc_,
+          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          cudnn_ws_nbytes_limit_,
+          &algo_));
+#endif
     }
     // get workspace for backwards filter algorithm
     size_t bwd_filter_ws_size, fwd_ws_size;

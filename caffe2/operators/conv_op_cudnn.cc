@@ -738,8 +738,22 @@ bool CudnnConvOp::DoRunWithType() {
         SetConvDescComputeType(conv_desc_, kComputeTypesToTry[bestAlgoIndex]);
       }
     } else {
+#if CUDNN_VERSION_MIN(8, 0, 0)	  
       algo_ = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+#else
+      // Get the convolution algorithm based on the workspace limit.
+      CUDNN_ENFORCE(cudnnGetConvolutionForwardAlgorithm(
+          cudnn_wrapper_.inline_cudnn_handle(),
+          bottom_desc_,
+          filter_desc_,
+          conv_desc_,
+          top_desc_,
+          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          cudnn_ws_nbytes_limit_,
+          &algo_));	  
+#endif
     }
+
     CUDNN_ENFORCE(cudnnGetConvolutionForwardWorkspaceSize(
         cudnn_wrapper_.inline_cudnn_handle(),
         bottom_desc_,
@@ -1180,7 +1194,19 @@ bool CudnnConvGradientOp::DoRunWithType() {
               bwd_data_conv_desc_, kComputeTypesToTry[bestAlgoIndex]);
         }
       } else {
+#if CUDNN_VERSION_MIN(8, 0, 0)	  
         bwd_data_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+#else
+        CUDNN_ENFORCE(cudnnGetConvolutionBackwardDataAlgorithm(
+            cudnn_wrapper_.inline_cudnn_handle(),
+            filter_desc_,
+            top_desc_,
+            bwd_data_conv_desc_,
+            bottom_desc_,
+            CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+            cudnn_ws_nbytes_limit_,
+            &bwd_data_algo_));
+#endif
       }
     }
 
